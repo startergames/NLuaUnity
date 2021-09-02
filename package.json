@@ -1,25 +1,25 @@
 {
-  "name": "com.omiyagames.template",
-  "displayName": "Omiya Games - Template Unity Package",
+  "name": "com.starter.nluaunity",
+  "displayName": "NLua for Unity",
   "version": "0.1.0-preview.1",
-  "unity": "2019.3",
+  "unity": "2018.4",
   "unityRelease": "7f1",
-  "description": "This is a template package, used as a basis to build a bigger one.",
+  "description": "This package is ",
   "category": "Tool",
   "type": "tool",
   "license": "MIT",
   "author": {
-    "name": "Taro Omiya",
-    "email": "support@omiyagames.com",
-    "url": "https://www.omiyagames.com"
+    "name": "Starter",
+    "email": "developer@startergames.com",
+    "url": "https://www.startergames.com"
   },
   "dependencies": {
-    "com.unity.ext.nunit": "1.0.0"
   },
   "keywords": [
-    "Omiya Games",
-    "Scripts",
-    "Template",
+    "Starter",
+    "Lua",
+    "NLua",
+    "KeraLua",
     "Tool"
   ],
   "samples": [

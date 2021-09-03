@@ -165,7 +165,7 @@ namespace NLuaUnity {
         }
 
         private void OnEnable() {
-            CallLuaMemberFuction("OnEnalbe");
+            CallLuaMemberFuction("OnEnable");
         }
 
         private void OnDisable() {

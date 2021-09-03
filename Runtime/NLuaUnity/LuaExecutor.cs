@@ -32,10 +32,7 @@ namespace NLuaUnity {
 
         public object this[object i] {
             get => luaField.TryGetValue(i, out var result) ? result : null;
-            set {
-                Debug.Log($"{gameObject.name}: {i} = {value}");
-                luaField[i] = value;
-            }
+            set => luaField[i] = value;
         }
 
         void Awake() {
@@ -46,10 +43,6 @@ namespace NLuaUnity {
                 lua.LoadCLRPackage();
                 lua.DoString("import 'UnityEngine'");
             }
-
-            // foreach (var r in BindObjects) {
-            //     lua[$"this.{r.name}"] = r.reference;
-            // }
 
             lua.Push(this);
             foreach (var r in BindObjects) {
@@ -66,10 +59,6 @@ namespace NLuaUnity {
             DoString(script);
 
             Profiler.EndSample();
-        }
-
-        private void OnDestroy() {
-            PCallMember("OnDestroy");
         }
 
         [Button]
@@ -105,50 +94,45 @@ namespace NLuaUnity {
         }
 
         private IEnumerator CoLuaCoroutine(object self = null, params object[] param) {
-            var thread = lua.NewThread();
-            if (self != null) {
-                thread["this"] = self;
-            }
-
-            var refId = lua.State.Ref(LuaRegistry.Index);
-
-            // 스택에 쌓여 있는 함수를 코루틴으로 옮김
-            // member일 경우에는 self가 필요하기 때문에 객체도 함께 옮김.
-            lua.State.XMove(thread.State, 1);
-
-            thread.Push(self);
-            // 함수 인자들을 스택에 푸시
-            foreach (var p in param) {
-                thread.Push(p);
-            }
-
-            var arguments = self != null ? param.Length + 1 : param.Length;
-            while (true) {
-                var status = thread.State.Resume(thread.State, arguments, out var results);
-                arguments = 0;
-                //var status = localState.State.PCall(0, -1, 0);
-                if (status == LuaStatus.Yield) {
-                    var seconds = thread.State.ToNumber(-1);
-                    thread.State.Pop(results);
-                    yield return new WaitForSeconds((float)seconds);
+            using (var thread = lua.NewThread()) {
+                if (self != null) {
+                    thread["this"] = self;
                 }
-                else if (status == LuaStatus.OK) {
-                    thread.State.Pop(results);
-                    break;
+
+                // 스택에 쌓여 있는 함수를 코루틴으로 옮김
+                // member일 경우에는 self가 필요하기 때문에 객체도 함께 옮김.
+                lua.State.XMove(thread.State, 1);
+
+                thread.Push(self);
+                // 함수 인자들을 스택에 푸시
+                foreach (var p in param) {
+                    thread.Push(p);
                 }
-                else {
-                    var errorStr = thread.State.ToString(-1);
-                    Debug.LogError(errorStr);
-                    thread.State.Pop(1);
-                    break;
+
+                var arguments = self != null ? param.Length + 1 : param.Length;
+                while (true) {
+                    var status = thread.State.Resume(thread.State, arguments, out var results);
+                    arguments = 0;
+                    if (status == LuaStatus.Yield) {
+                        var seconds = thread.State.ToNumber(-1);
+                        thread.State.Pop(results);
+                        yield return new WaitForSeconds((float)seconds);
+                    }
+                    else if (status == LuaStatus.OK) {
+                        thread.State.Pop(results);
+                        break;
+                    }
+                    else {
+                        var errorStr = thread.State.ToString(-1);
+                        Debug.LogError(errorStr);
+                        thread.State.Pop(1);
+                        break;
+                    }
                 }
             }
-
-            lua.State.Unref(refId);
-            thread.Dispose();
         }
 
-        private void CallLuaMemberFuction(string name, params object[] param) {
+        private void CallLuaMemberFunction(string name, params object[] param) {
             lua.Push(this);
             lua.State.GetField(-1, name);
             if (lua.State.IsNil(-1)) {
@@ -161,11 +145,15 @@ namespace NLuaUnity {
         }
 
         private void Start() {
-            CallLuaMemberFuction("Start");
+            CallLuaMemberFunction("Start");
+        }
+
+        private void OnDestroy() {
+            PCallMember("OnDestroy");
         }
 
         private void OnEnable() {
-            CallLuaMemberFuction("OnEnable");
+            CallLuaMemberFunction("OnEnable");
         }
 
         private void OnDisable() {
@@ -174,7 +162,7 @@ namespace NLuaUnity {
         }
 
         private void Update() {
-            CallLuaMemberFuction("Update");
+            CallLuaMemberFunction("Update");
         }
     }
 }

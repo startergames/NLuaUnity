@@ -48,7 +48,8 @@ namespace NLua
         private bool _globalsSorted;
         #endregion
         private LuaState _luaState;
-        private bool _isThread = false;
+        private LuaState _parentState;
+        private int     _threadRefID = 0;
         /// <summary>
         /// True while a script is being executed
         /// </summary>
@@ -247,16 +248,14 @@ end
 			
             // We need to keep this in a managed reference so the delegate doesn't get garbage collected
             _luaState.AtPanic(PanicCallback);
-
-			
         }
 
         /*
             * CAUTION: NLua.Lua instances can't share the same lua state! 
             */
-        public Lua(LuaState luaState, bool isThread = false, ObjectTranslator translator = null)
+        public Lua(LuaState luaState, LuaState parent = null, ObjectTranslator translator = null)
         {
-            if (!isThread) {
+            if (parent == null) {
                 luaState.PushString("NLua_Loaded");
                 luaState.GetTable((int)LuaRegistry.Index);
 
@@ -268,15 +267,19 @@ end
                 luaState.SetTop(-2);
             }
 
-            _luaState = luaState;
-            _isThread = isThread;
+            _luaState    = luaState;
+            _parentState = parent;
+            if (_parentState != null) {
+                _threadRefID = _parentState.Ref(LuaRegistry.Index);
+            }
+
             _StatePassed = true;
             Init(translator);
         }
 
         public Lua NewThread() {
-            var thread = State.NewThread();
-            var nThread = new Lua(thread, true, _translator);
+            var thread  = State.NewThread();
+            var nThread = new Lua(thread, State, _translator);
 
             return nThread;
         }
@@ -313,9 +316,13 @@ end
             if (_StatePassed || _luaState == null)
                 return;
 
-            if( !_isThread)
+            if (_parentState == null) {
                 _luaState.Close();
-            
+            }
+            else {
+                _parentState.Unref(_threadRefID);
+            }
+
             ObjectTranslatorPool.Instance.Remove(_luaState);
             _luaState = null;
         }
@@ -1267,7 +1274,7 @@ end
         }
         public virtual void Dispose()
         {
-            if (_translator != null && !_isThread)
+            if (_translator != null && _parentState == null)
             {
                 _translator.PendingEvents.Dispose();
                 if (_translator.Tag != IntPtr.Zero)
